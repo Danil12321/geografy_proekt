@@ -185,7 +185,6 @@ scene.add(cloudsSphere);
 // ==========================================
 const satelliteObjects = []; // Массив для Raycaster и анимаций
 
-// Функция создания 3D-модели спутника
 function createSatelliteMesh(colorHex) {
     const group = new THREE.Group();
     // Корпус
@@ -203,7 +202,6 @@ function createSatelliteMesh(colorHex) {
     return group;
 }
 
-// Функция построения траектории орбиты
 function createOrbitLine(radius, colorHex) {
     const points = [];
     const segments = 128;
@@ -216,36 +214,36 @@ function createOrbitLine(radius, colorHex) {
     return new THREE.LineLoop(orbitGeo, orbitMat);
 }
 
-// Генерация группировки спутников
 function addSatelliteConstellation({ name, count, planes, radius, inclination, speed, color, info }) {
     const satsPerPlane = Math.ceil(count / planes);
 
     for (let p = 0; p < planes; p++) {
         const planeAngle = (p / planes) * Math.PI * 2;
 
-        // Создаем родительскую группу орбитальной плоскости
         const planeGroup = new THREE.Group();
         planeGroup.rotation.y = planeAngle;
         planeGroup.rotation.x = inclination;
         scene.add(planeGroup);
 
-        // Линия орбиты
         const orbitLine = createOrbitLine(radius, color);
         planeGroup.add(orbitLine);
 
         for (let s = 0; s < satsPerPlane; s++) {
-            const initialAngle = (s / satsPerPlane) * Math.PI * 2 + (p * 0.3); // Сдвиг фазы
+            const initialAngle = (s / satsPerPlane) * Math.PI * 2 + (p * 0.3);
             const satMesh = createSatelliteMesh(color);
 
-            // Конус сканирования ДЗЗ (если это система зондирования)
-            let scanBeam = null;
+            // Изначально выставляем стартовую позицию
+            satMesh.position.x = radius * Math.cos(initialAngle);
+            satMesh.position.z = radius * Math.sin(initialAngle);
+            satMesh.rotation.y = -initialAngle;
+
             if (info.isRemoteSensing) {
                 const beamHeight = radius - EARTH_RADIUS;
                 const beamGeo = new THREE.ConeGeometry(0.3, beamHeight, 16, 1, true);
                 const beamMat = new THREE.MeshBasicMaterial({
                     color: 0xffff00, transparent: true, opacity: 0.18, side: THREE.DoubleSide
                 });
-                scanBeam = new THREE.Mesh(beamGeo, beamMat);
+                const scanBeam = new THREE.Mesh(beamGeo, beamMat);
                 scanBeam.rotation.x = Math.PI / 2;
                 scanBeam.position.z = -beamHeight / 2;
                 satMesh.add(scanBeam);
@@ -269,14 +267,14 @@ function addSatelliteConstellation({ name, count, planes, radius, inclination, s
     }
 }
 
-// 6.1. ГРУППИРОВКА GPS (США) — 24 спутника, 6 плоскостей
+// 6.1. GPS (США) — Скорость замедлена до 0.0008
 addSatelliteConstellation({
     name: 'GPS IIF/III',
     count: 24,
     planes: 6,
-    radius: EARTH_RADIUS * 3.8, // ~20 200 км
+    radius: EARTH_RADIUS * 3.8,
     inclination: THREE.MathUtils.degToRad(55),
-    speed: 0.002,
+    speed: 0.0008,
     color: 0x00f0ff,
     info: {
         system: 'GPS (NAVSTAR, США)',
@@ -287,14 +285,14 @@ addSatelliteConstellation({
     }
 });
 
-// 6.2. ГРУППИРОВКА ГЛОНАСС (Россия) — 24 спутника, 3 плоскости
+// 6.2. ГЛОНАСС (Россия) — Скорость замедлена до 0.0009
 addSatelliteConstellation({
     name: 'ГЛОНАСС-К',
     count: 24,
     planes: 3,
-    radius: EARTH_RADIUS * 3.6, // ~19 100 км
+    radius: EARTH_RADIUS * 3.6,
     inclination: THREE.MathUtils.degToRad(64.8),
-    speed: 0.0022,
+    speed: 0.0009,
     color: 0x00ff66,
     info: {
         system: 'ГЛОНАСС (Россия)',
@@ -305,14 +303,14 @@ addSatelliteConstellation({
     }
 });
 
-// 6.3. СПУТНИКИ ДЗЗ (Дистанционное Зондирование Земли) — Полярные орбиты
+// 6.3. ДЗЗ — Скорость замедлена до 0.002
 addSatelliteConstellation({
     name: 'Sentinel-2A / Landsat-9',
     count: 6,
     planes: 3,
-    radius: EARTH_RADIUS * 1.25, // ~700-800 км (LEO)
+    radius: EARTH_RADIUS * 1.25,
     inclination: THREE.MathUtils.degToRad(98),
-    speed: 0.006,
+    speed: 0.002,
     color: 0xffd700,
     info: {
         system: 'Copernicus / USGS (Европа / США)',
@@ -323,14 +321,14 @@ addSatelliteConstellation({
     }
 });
 
-// 6.4. ГЕОСТАЦИОНАРНЫЕ МЕТЕОСПУТНИКИ (GEO)
+// 6.4. ГЕОСТАЦИОНАРНЫЕ — Скорость замедлена до 0.0004
 addSatelliteConstellation({
     name: 'Электро-Л / GOES',
     count: 4,
     planes: 1,
-    radius: EARTH_RADIUS * 5.2, // ~35 786 км
+    radius: EARTH_RADIUS * 5.2,
     inclination: 0,
-    speed: 0.001,
+    speed: 0.0004,
     color: 0xff00ff,
     info: {
         system: 'Геостационарная метеосеть',
@@ -341,14 +339,14 @@ addSatelliteConstellation({
     }
 });
 
-// 6.5. МКС (Международная Космическая Станция)
+// 6.5. МКС — Скорость замедлена до 0.0025
 addSatelliteConstellation({
     name: 'МКС (ISS)',
     count: 1,
     planes: 1,
-    radius: EARTH_RADIUS * 1.15, // ~420 км
+    radius: EARTH_RADIUS * 1.15,
     inclination: THREE.MathUtils.degToRad(51.6),
-    speed: 0.008,
+    speed: 0.0025,
     color: 0xff8800,
     info: {
         system: 'Пилотируемая космическая станция',
@@ -360,7 +358,7 @@ addSatelliteConstellation({
 });
 
 // ==========================================
-// 7. ИНТЕРАКТИВНОСТЬ (RAYCASTER И МЫШЬ)
+// 7. ИНТЕРАКТИВНОСТЬ И НАВЕДЕНИЕ МЫШИ
 // ==========================================
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -372,12 +370,10 @@ window.addEventListener('mousemove', (event) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    // Массив мешей всех спутников
     const satMeshes = satelliteObjects.map(s => s.mesh);
     const intersects = raycaster.intersectObjects(satMeshes, true);
 
     if (intersects.length > 0) {
-        // Находим родительский объект спутника в массиве
         let obj = intersects[0].object;
         while (obj.parent && !satelliteObjects.find(s => s.mesh === obj)) {
             obj = obj.parent;
@@ -390,9 +386,8 @@ window.addEventListener('mousemove', (event) => {
             if (hoveredSat !== foundSat) {
                 if (hoveredSat) hoveredSat.mesh.scale.set(1, 1, 1);
                 hoveredSat = foundSat;
-                hoveredSat.mesh.scale.set(2.2, 2.2, 2.2); // Увеличение при наведении
+                hoveredSat.mesh.scale.set(2.2, 2.2, 2.2);
 
-                // Обновляем инфо-карточку
                 const i = foundSat.info;
                 infoCard.style.display = 'block';
                 infoCard.innerHTML = `
@@ -420,7 +415,6 @@ window.addEventListener('mousemove', (event) => {
     }
 });
 
-// Адаптация под размер окна
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -433,19 +427,19 @@ window.addEventListener('resize', () => {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Вращение Земли и облаков
-    sphere.rotation.y += 0.0015;
-    cloudsSphere.rotation.y += 0.0019;
+    // Вращение Земли и облаков продолжается всегда
+    sphere.rotation.y += 0.0012;
+    cloudsSphere.rotation.y += 0.0015;
 
-    // Движение всех спутников по их орбитам
-    satelliteObjects.forEach(sat => {
-        sat.angle += sat.speed;
-        sat.mesh.position.x = sat.radius * Math.cos(sat.angle);
-        sat.mesh.position.z = sat.radius * Math.sin(sat.angle);
-
-        // Направляем спутник передом по направлению движения
-        sat.mesh.rotation.y = -sat.angle;
-    });
+    // Спутники двигаются ТОЛЬКО тогда, когда курсор НЕ наведен ни на один из них
+    if (!hoveredSat) {
+        satelliteObjects.forEach(sat => {
+            sat.angle += sat.speed;
+            sat.mesh.position.x = sat.radius * Math.cos(sat.angle);
+            sat.mesh.position.z = sat.radius * Math.sin(sat.angle);
+            sat.mesh.rotation.y = -sat.angle;
+        });
+    }
 
     controls.update();
     renderer.render(scene, camera);

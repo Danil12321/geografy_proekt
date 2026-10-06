@@ -1,27 +1,54 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// 1. Сцена
+// ==========================================
+// 1. СЦЕНА, КАМЕРА И РЕНДЕРЕР
+// ==========================================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
-// 2. Камера
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2, 6);
+camera.position.set(0, 4, 10);
 
-// 3. Рендерер
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-// 4. Управление камерой
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.minDistance = 3;
-controls.maxDistance = 80;
+controls.minDistance = 2.2;
+controls.maxDistance = 200;
 
-// 5. Звёзды
+// ==========================================
+// 2. ИНТЕРФЕЙС (UI-карточка информации о спутнике)
+// ==========================================
+const infoCard = document.createElement('div');
+infoCard.id = 'sat-info-card';
+infoCard.style.cssText = `
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 310px;
+    background: rgba(10, 15, 30, 0.88);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 240, 255, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
+    display: none;
+    pointer-events: none;
+    z-index: 1000;
+    line-height: 1.45;
+`;
+document.body.appendChild(infoCard);
+
+// ==========================================
+// 3. ЗВЁЗДНОЕ НЕБО
+// ==========================================
 const starsGeometry = new THREE.BufferGeometry();
 const starsCount = 10000;
 const positions = new Float32Array(starsCount * 3);
@@ -38,7 +65,9 @@ const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, siz
 const stars = new THREE.Points(starsGeometry, starsMaterial);
 scene.add(stars);
 
-// 6. СВЕТ
+// ==========================================
+// 4. ОСВЕЩЕНИЕ И СВЕЧЕНИЕ (Солнце и Луна)
+// ==========================================
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
 sunLight.position.set(30, 15, 30);
 scene.add(sunLight);
@@ -47,7 +76,6 @@ const moonLight = new THREE.DirectionalLight(0xaaccff, 0.8);
 moonLight.position.set(-30, -15, -30);
 scene.add(moonLight);
 
-// 7. ФУНКЦИЯ ДЛЯ СОЗДАНИЯ СВЕЧЕНИЯ
 function createGlowTexture(color) {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -63,11 +91,11 @@ function createGlowTexture(color) {
     return new THREE.CanvasTexture(canvas);
 }
 
-// 8. СОЛНЦЕ
-const sunGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+// СОЛНЦЕ
+const sunGeometry = new THREE.SphereGeometry(15, 64, 64);
 const sunMaterial = new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load('sun.jpg') });
 const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-sun.position.set(30, 15, 30);
+sun.position.set(170, 85, 170);
 scene.add(sun);
 
 const sunGlowMaterial = new THREE.SpriteMaterial({
@@ -76,18 +104,18 @@ const sunGlowMaterial = new THREE.SpriteMaterial({
     blending: THREE.AdditiveBlending, depthWrite: false
 });
 const sunGlow = new THREE.Sprite(sunGlowMaterial);
-sunGlow.scale.set(8, 8, 1);
+sunGlow.scale.set(80, 80, 1);
 sunGlow.position.copy(sun.position);
 scene.add(sunGlow);
 
-// 9. ЛУНА
-const moonGeometry = new THREE.SphereGeometry(0.8, 32, 32);
+// ЛУНА
+const moonGeometry = new THREE.SphereGeometry(0.41, 32, 32);
 const moonMaterial = new THREE.MeshStandardMaterial({
     map: new THREE.TextureLoader().load('moon.jpg'),
     roughness: 0.8, metalness: 0.1
 });
 const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-moon.position.set(-20, -9, -20);
+moon.position.set(-10, -4.5, -10);
 scene.add(moon);
 
 const moonGlowMaterial = new THREE.SpriteMaterial({
@@ -100,7 +128,11 @@ moonGlow.scale.set(4, 4, 1);
 moonGlow.position.copy(moon.position);
 scene.add(moonGlow);
 
-// 10. ЗЕМЛЯ (день + ночь) — ИСПРАВЛЕНО
+// ==========================================
+// 5. ЗЕМЛЯ И ОБЛАКА
+// ==========================================
+const EARTH_RADIUS = 1.5;
+
 const dayTexture = new THREE.TextureLoader().load('earth_day.jpg');
 const nightTexture = new THREE.TextureLoader().load('earth_night.jpg');
 
@@ -136,12 +168,11 @@ const earthMaterial = new THREE.ShaderMaterial({
     `
 });
 
-const geometry = new THREE.SphereGeometry(1.5, 64, 64);
+const geometry = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64);
 const sphere = new THREE.Mesh(geometry, earthMaterial);
 scene.add(sphere);
 
-// 11. ОБЛАКА
-const cloudsGeometry = new THREE.SphereGeometry(1.52, 64, 64);
+const cloudsGeometry = new THREE.SphereGeometry(EARTH_RADIUS * 1.015, 64, 64);
 const cloudsMaterial = new THREE.MeshStandardMaterial({
     map: new THREE.TextureLoader().load('earth_clouds.jpg'),
     transparent: true, opacity: 0.4, depthWrite: false
@@ -149,12 +180,275 @@ const cloudsMaterial = new THREE.MeshStandardMaterial({
 const cloudsSphere = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
 scene.add(cloudsSphere);
 
-// 12. Анимация
+// ==========================================
+// 6. СПУТНИКОВЫЕ СИСТЕМЫ И ОРБИТЫ
+// ==========================================
+const satelliteObjects = []; // Массив для Raycaster и анимаций
+
+// Функция создания 3D-модели спутника
+function createSatelliteMesh(colorHex) {
+    const group = new THREE.Group();
+    // Корпус
+    const bodyGeo = new THREE.BoxGeometry(0.06, 0.06, 0.08);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.8, roughness: 0.2 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    group.add(body);
+
+    // Солнечные панели
+    const panelGeo = new THREE.BoxGeometry(0.24, 0.01, 0.05);
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x002288, metalness: 0.9, roughness: 0.1 });
+    const panel = new THREE.Mesh(panelGeo, panelMat);
+    group.add(panel);
+
+    return group;
+}
+
+// Функция построения траектории орбиты
+function createOrbitLine(radius, colorHex) {
+    const points = [];
+    const segments = 128;
+    for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        points.push(new THREE.Vector3(radius * Math.cos(theta), 0, radius * Math.sin(theta)));
+    }
+    const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const orbitMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.35 });
+    return new THREE.LineLoop(orbitGeo, orbitMat);
+}
+
+// Генерация группировки спутников
+function addSatelliteConstellation({ name, count, planes, radius, inclination, speed, color, info }) {
+    const satsPerPlane = Math.ceil(count / planes);
+
+    for (let p = 0; p < planes; p++) {
+        const planeAngle = (p / planes) * Math.PI * 2;
+
+        // Создаем родительскую группу орбитальной плоскости
+        const planeGroup = new THREE.Group();
+        planeGroup.rotation.y = planeAngle;
+        planeGroup.rotation.x = inclination;
+        scene.add(planeGroup);
+
+        // Линия орбиты
+        const orbitLine = createOrbitLine(radius, color);
+        planeGroup.add(orbitLine);
+
+        for (let s = 0; s < satsPerPlane; s++) {
+            const initialAngle = (s / satsPerPlane) * Math.PI * 2 + (p * 0.3); // Сдвиг фазы
+            const satMesh = createSatelliteMesh(color);
+
+            // Конус сканирования ДЗЗ (если это система зондирования)
+            let scanBeam = null;
+            if (info.isRemoteSensing) {
+                const beamHeight = radius - EARTH_RADIUS;
+                const beamGeo = new THREE.ConeGeometry(0.3, beamHeight, 16, 1, true);
+                const beamMat = new THREE.MeshBasicMaterial({
+                    color: 0xffff00, transparent: true, opacity: 0.18, side: THREE.DoubleSide
+                });
+                scanBeam = new THREE.Mesh(beamGeo, beamMat);
+                scanBeam.rotation.x = Math.PI / 2;
+                scanBeam.position.z = -beamHeight / 2;
+                satMesh.add(scanBeam);
+            }
+
+            planeGroup.add(satMesh);
+
+            satelliteObjects.push({
+                mesh: satMesh,
+                planeGroup: planeGroup,
+                radius: radius,
+                angle: initialAngle,
+                speed: speed,
+                colorHex: color,
+                info: {
+                    ...info,
+                    fullName: `${name} #${p * satsPerPlane + s + 1}`
+                }
+            });
+        }
+    }
+}
+
+// 6.1. ГРУППИРОВКА GPS (США) — 24 спутника, 6 плоскостей
+addSatelliteConstellation({
+    name: 'GPS IIF/III',
+    count: 24,
+    planes: 6,
+    radius: EARTH_RADIUS * 3.8, // ~20 200 км
+    inclination: THREE.MathUtils.degToRad(55),
+    speed: 0.002,
+    color: 0x00f0ff,
+    info: {
+        system: 'GPS (NAVSTAR, США)',
+        altitude: '~20 200 км (MEO)',
+        type: 'Спутниковая навигация',
+        purpose: 'Передача точных сигналов времени и координат для трехмерной навигации на Земле.',
+        isRemoteSensing: false
+    }
+});
+
+// 6.2. ГРУППИРОВКА ГЛОНАСС (Россия) — 24 спутника, 3 плоскости
+addSatelliteConstellation({
+    name: 'ГЛОНАСС-К',
+    count: 24,
+    planes: 3,
+    radius: EARTH_RADIUS * 3.6, // ~19 100 км
+    inclination: THREE.MathUtils.degToRad(64.8),
+    speed: 0.0022,
+    color: 0x00ff66,
+    info: {
+        system: 'ГЛОНАСС (Россия)',
+        altitude: '~19 100 км (MEO)',
+        type: 'Спутниковая навигация',
+        purpose: 'Глобальное навигационное обеспечение, высокоточная геодезия и топография.',
+        isRemoteSensing: false
+    }
+});
+
+// 6.3. СПУТНИКИ ДЗЗ (Дистанционное Зондирование Земли) — Полярные орбиты
+addSatelliteConstellation({
+    name: 'Sentinel-2A / Landsat-9',
+    count: 6,
+    planes: 3,
+    radius: EARTH_RADIUS * 1.25, // ~700-800 км (LEO)
+    inclination: THREE.MathUtils.degToRad(98),
+    speed: 0.006,
+    color: 0xffd700,
+    info: {
+        system: 'Copernicus / USGS (Европа / США)',
+        altitude: '~705 - 786 км (Полярная LEO)',
+        type: 'Дистанционное зондирование Земли (ДЗЗ)',
+        purpose: 'Оптико-электронная съемка суши и океанов, картографирование, анализ вырубки лесов и таяния ледников.',
+        isRemoteSensing: true
+    }
+});
+
+// 6.4. ГЕОСТАЦИОНАРНЫЕ МЕТЕОСПУТНИКИ (GEO)
+addSatelliteConstellation({
+    name: 'Электро-Л / GOES',
+    count: 4,
+    planes: 1,
+    radius: EARTH_RADIUS * 5.2, // ~35 786 км
+    inclination: 0,
+    speed: 0.001,
+    color: 0xff00ff,
+    info: {
+        system: 'Геостационарная метеосеть',
+        altitude: '~35 786 км (GEO)',
+        type: 'Метеорологический и климатический мониторинг',
+        purpose: 'Непрерывное наблюдение циркуляции атмосферы, штормов и глобального теплового баланса.',
+        isRemoteSensing: false
+    }
+});
+
+// 6.5. МКС (Международная Космическая Станция)
+addSatelliteConstellation({
+    name: 'МКС (ISS)',
+    count: 1,
+    planes: 1,
+    radius: EARTH_RADIUS * 1.15, // ~420 км
+    inclination: THREE.MathUtils.degToRad(51.6),
+    speed: 0.008,
+    color: 0xff8800,
+    info: {
+        system: 'Пилотируемая космическая станция',
+        altitude: '~420 км (LEO)',
+        type: 'Научно-исследовательская лаборатория',
+        purpose: 'Аэрокосмические эксперименты, экологический мониторинг и визуальные географические наблюдения.',
+        isRemoteSensing: false
+    }
+});
+
+// ==========================================
+// 7. ИНТЕРАКТИВНОСТЬ (RAYCASTER И МЫШЬ)
+// ==========================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hoveredSat = null;
+
+window.addEventListener('mousemove', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Массив мешей всех спутников
+    const satMeshes = satelliteObjects.map(s => s.mesh);
+    const intersects = raycaster.intersectObjects(satMeshes, true);
+
+    if (intersects.length > 0) {
+        // Находим родительский объект спутника в массиве
+        let obj = intersects[0].object;
+        while (obj.parent && !satelliteObjects.find(s => s.mesh === obj)) {
+            obj = obj.parent;
+        }
+        const foundSat = satelliteObjects.find(s => s.mesh === obj);
+
+        if (foundSat) {
+            document.body.style.cursor = 'pointer';
+
+            if (hoveredSat !== foundSat) {
+                if (hoveredSat) hoveredSat.mesh.scale.set(1, 1, 1);
+                hoveredSat = foundSat;
+                hoveredSat.mesh.scale.set(2.2, 2.2, 2.2); // Увеличение при наведении
+
+                // Обновляем инфо-карточку
+                const i = foundSat.info;
+                infoCard.style.display = 'block';
+                infoCard.innerHTML = `
+                    <div style="color: #${foundSat.colorHex.toString(16)}; font-size: 16px; font-weight: bold; margin-bottom: 6px;">
+                        ${i.fullName}
+                    </div>
+                    <div style="font-size: 12px; color: #a0c0d0; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 6px;">
+                        <b>Система:</b> ${i.system}
+                    </div>
+                    <div style="margin-bottom: 4px;"><b>Высота орбит:</b> ${i.altitude}</div>
+                    <div style="margin-bottom: 8px;"><b>Тип:</b> ${i.type}</div>
+                    <div style="font-size: 12px; color: #d0e8f5; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                        ${i.purpose}
+                    </div>
+                `;
+            }
+        }
+    } else {
+        document.body.style.cursor = 'default';
+        if (hoveredSat) {
+            hoveredSat.mesh.scale.set(1, 1, 1);
+            hoveredSat = null;
+        }
+        infoCard.style.display = 'none';
+    }
+});
+
+// Адаптация под размер окна
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ==========================================
+// 8. ЦИКЛ АНИМАЦИИ
+// ==========================================
 function animate() {
     requestAnimationFrame(animate);
-    sphere.rotation.y += 0.002;
-    cloudsSphere.rotation.y += 0.0025;
+
+    // Вращение Земли и облаков
+    sphere.rotation.y += 0.0015;
+    cloudsSphere.rotation.y += 0.0019;
+
+    // Движение всех спутников по их орбитам
+    satelliteObjects.forEach(sat => {
+        sat.angle += sat.speed;
+        sat.mesh.position.x = sat.radius * Math.cos(sat.angle);
+        sat.mesh.position.z = sat.radius * Math.sin(sat.angle);
+
+        // Направляем спутник передом по направлению движения
+        sat.mesh.rotation.y = -sat.angle;
+    });
+
     controls.update();
     renderer.render(scene, camera);
 }
+
 animate();
